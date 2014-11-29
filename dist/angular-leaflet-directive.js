@@ -326,13 +326,14 @@ angular.module("leaflet-directive").directive('center',
                 if (centerModel.autoDiscover === true) {
                     map.on("locationerror", function() {
                         $log.warn("[AngularJS - Leaflet] The Geolocation API is unauthorized on this page.");
-                        if (isValidCenter(centerModel)) {
-                            map.setView([centerModel.lat, centerModel.lng], centerModel.zoom);
-                            leafletEvents.notifyCenterChangedToBounds(leafletScope, map);
-                        } else {
-                            map.setView([defaults.center.lat, defaults.center.lng], defaults.center.zoom);
-                            leafletEvents.notifyCenterChangedToBounds(leafletScope, map);
-                        }
+                        // don't recenter the map to default center on error
+                        // if (isValidCenter(centerModel)) {
+                        //     map.setView([centerModel.lat, centerModel.lng], centerModel.zoom);
+                        //     leafletEvents.notifyCenterChangedToBounds(leafletScope, map);
+                        // } else {
+                        //     map.setView([defaults.center.lat, defaults.center.lng], defaults.center.zoom);
+                        //     leafletEvents.notifyCenterChangedToBounds(leafletScope, map);
+                        // }
                     });
                 }
             });
