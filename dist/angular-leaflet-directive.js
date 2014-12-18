@@ -1115,17 +1115,13 @@ angular.module("leaflet-directive").directive('controls', ["$log", "leafletHelpe
 
             controller.getMap().then(function(map) {
                 if (isDefined(L.Control.Draw) && isDefined(controls.draw)) {
-                    var drawnItems = new L.FeatureGroup();
-                    var options = {
-                        edit: {
-                            featureGroup: drawnItems
-                        }
-                    };
-                    angular.extend(options, controls.draw);
-                    controls.draw = options;
-                    map.addLayer(options.edit.featureGroup);
 
-                    var drawControl = new L.Control.Draw(options);
+                    if (!isDefined(controls.edit)) {
+                        controls.edit = { featureGroup: new L.FeatureGroup() };
+                        map.addLayer(controls.edit.featureGroup);
+                    }
+
+                    var drawControl = new L.Control.Draw(controls);
                     map.addControl(drawControl);
                 }
 
@@ -3054,6 +3050,7 @@ angular.module("leaflet-directive").factory('leafletMarkersHelpers', ["$rootScop
         MarkerClusterPlugin = leafletHelpers.MarkerClusterPlugin,
         AwesomeMarkersPlugin = leafletHelpers.AwesomeMarkersPlugin,
         MakiMarkersPlugin = leafletHelpers.MakiMarkersPlugin,
+        ExtraMarkersPlugin = leafletHelpers.ExtraMarkersPlugin,
         safeApply     = leafletHelpers.safeApply,
         Helpers = leafletHelpers,
         isString = leafletHelpers.isString,
@@ -3076,6 +3073,13 @@ angular.module("leaflet-directive").factory('leafletMarkersHelpers', ["$rootScop
             }
 
             return new L.MakiMarkers.icon(iconData);
+        }
+
+        if (isDefined(iconData) && isDefined(iconData.type) && iconData.type === 'extraMarker') {
+            if (!ExtraMarkersPlugin.isLoaded()) {
+                $log.error('[AngularJS - Leaflet] The ExtraMarkers Plugin is not loaded.');
+            }
+            return new L.ExtraMarkers.icon(iconData);
         }
 
         if (isDefined(iconData) && isDefined(iconData.type) && iconData.type === 'div') {
@@ -3151,8 +3155,8 @@ angular.module("leaflet-directive").factory('leafletMarkersHelpers', ["$rootScop
             };
 
             $compile(popup._contentNode)($rootScope);
-            //in case of an ng-include, we need to update the content after template load 
-            if (popup._contentNode.innerHTML.indexOf("ngInclude") > -1) {
+            //in case of an ng-include, we need to update the content after template load
+            if (isDefined(popup._contentNode) && popup._contentNode.innerHTML.indexOf("ngInclude") > -1) {
                 $rootScope.$on('$includeContentLoaded', function(event, src) {
                     if (popup.getContent().indexOf(src) > -1) {
                         updatePopup(popup);
@@ -3256,6 +3260,14 @@ angular.module("leaflet-directive").factory('leafletMarkersHelpers', ["$rootScop
                     $log.warn('There are problems with lat-lng data, please verify your marker model');
                     _deleteMarker(marker, map, layers);
                     return;
+                }
+
+                // watch is being initialized if old and new object is the same
+                var isInitializing = markerData === oldMarkerData;
+
+                // Update marker rotation
+                if (isDefined(markerData.iconAngle) && oldMarkerData.iconAngle !== markerData.iconAngle) {
+                    marker.setIconAngle(markerData.iconAngle);
                 }
 
                 // It is possible that the layer has been removed or the layer marker does not exist
@@ -3386,7 +3398,7 @@ angular.module("leaflet-directive").factory('leafletMarkersHelpers', ["$rootScop
                 }
 
                 // The markerData.focus property must be true so we update if there wasn't a previous value or it wasn't true
-                if (markerData.focus === true && oldMarkerData.focus === false || markerData === oldMarkerData){
+                if (markerData.focus === true && oldMarkerData.focus === false || (isInitializing && markerData.focus === true)) {
                     // Reopen the popup when focus is still true
                     _manageOpenPopup(marker, markerData);
                     updatedFocus = true;
@@ -3646,6 +3658,32 @@ angular.module("leaflet-directive").factory('leafletHelpers', ["$q", "$log", fun
             is: function(icon) {
                 if (this.isLoaded()) {
                     return icon instanceof L.MakiMarkers.Icon;
+                } else {
+                    return false;
+                }
+            },
+            equal: function (iconA, iconB) {
+                if (!this.isLoaded()) {
+                    return false;
+                }
+                if (this.is(iconA)) {
+                    return angular.equals(iconA, iconB);
+                } else {
+                    return false;
+                }
+            }
+        },
+        ExtraMarkersPlugin: {
+            isLoaded: function () {
+                if (angular.isDefined(L.ExtraMarkers) && angular.isDefined(L.ExtraMarkers.Icon)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            },
+            is: function (icon) {
+                if (this.isLoaded()) {
+                    return icon instanceof L.ExtraMarkers.Icon;
                 } else {
                     return false;
                 }
